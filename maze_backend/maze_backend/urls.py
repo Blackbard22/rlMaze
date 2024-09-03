@@ -17,9 +17,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from myapp.views import run_qlearn
+from myapp.views import sse_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
     path('run_qlearn/', run_qlearn),
+    # path('send_data/', send_data_to_websocket, name='send_data'),
+    # path('trigger-websocket/', trigger_websocket, name='trigger_websocket'),
+    path('sse/', sse_view, name='sse'),
 ]
