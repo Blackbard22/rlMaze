@@ -17,13 +17,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from myapp.views import run_qlearn
-from myapp.views import sse_view
+from myapp.views import sse_view, save_maze, get_maze
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-
     path('run_qlearn/', run_qlearn),
-    # path('send_data/', send_data_to_websocket, name='send_data'),
-    # path('trigger-websocket/', trigger_websocket, name='trigger_websocket'),
     path('sse/', sse_view, name='sse'),
+    path('save_maze/', save_maze, name='save_maze'),
+    path('get_maze/<int:maze_id>/', get_maze, name='get_maze')
 ]
+

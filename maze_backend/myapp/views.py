@@ -250,11 +250,9 @@
     # return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
     
 
-
-    
-    
 from django.http import StreamingHttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from .models import Maze
 import json
 import time
 import numpy as np
@@ -369,6 +367,8 @@ def run_qlearn_func(episode_value, time_value):
 
     def display_maze(maze, agent_pos, episode, step):
         clear_console()
+        print(f"maze to display: {maze}")
+        # time.sleep(20)
         print(f"Episode: {episode}, Step: {step}")
         for i, row in enumerate(maze):
             for j, cell in enumerate(row):
@@ -425,15 +425,82 @@ def run_qlearn_func(episode_value, time_value):
 
         return path
 
-    maze = [
-        ['S', '.', '#', '#', '#'],
-        ['.', '.', '.', '.', '#'],
-        ['#', '#', '#', 'G', '#'],
-        ['#', '.', '.', '.', '#'],
-        ['#', '.', '#', '.', '.']
-    ]
+    # maze = [
+    #     ['S', '.', '#', '#', '#'],
+    #     ['.', '.', '.', '.', '#'],
+    #     ['#', '#', '#', 'G', '#'],
+    #     ['#', '.', '.', '.', '#'],
+    #     ['#', '.', '#', '.', '.']
+    # ]
+
+    # print(f"og maze: {maze}")
+
+    # print(f"maze type: {type(maze)}")   
+
+    maze_object = Maze.objects.first()
+    maze = json.loads(maze_object.layout)
+    
+    print(f"maze type: {type(maze)}")   
+    time.sleep(3)
+
+
+
 
     trained_agent = train_q_learning(maze, episodes=int(episode_value))
     solution_path = solve_maze(maze, trained_agent)
 
     return solution_path
+
+
+
+
+@csrf_exempt
+def save_maze(request):
+    if request.method == 'POST':
+        try:
+            # Parse the incoming JSON data from the request
+            data = json.loads(request.body)
+            maze_data = data.get('maze', [])
+
+            # Delete any existing maze data
+            Maze.objects.all().delete()
+
+            # Create and save the new maze
+            new_maze = Maze(layout=json.dumps(maze_data)) 
+            print(f"Received maze data: {new_maze.layout}")
+            new_maze.save()
+
+            return JsonResponse({'status': 'success', 'message': 'Maze saved successfully'})
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=400)
+
+
+
+def get_maze(request):
+    try:
+        # Fetch the first maze record from the database
+        maze = Maze.objects.first()
+
+        if not maze:
+            return JsonResponse({'status': 'error', 'message': 'No maze found'}, status=404)
+
+        # Return the maze layout
+        return JsonResponse({'status': 'success', 'maze': maze.maze_layout})
+    except Exception as e:
+        # Log or handle the exception
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+
+
+def fetch_maze():
+    try:
+        maze = Maze.objects.first()
+        if not maze:
+            raise ValueError("No maze found")
+        return maze.layout
+    except Exception as e:
+        print(f"Error fetching maze: {e}")
+        return None

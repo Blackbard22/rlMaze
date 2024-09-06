@@ -13,7 +13,13 @@ function App() {
   const [error, setError] = useState(null);
   const [isChecked, setIsChecked] = useState(false);
   const [radioValue, setRadioValue] = useState('');
-  const [positions, setPositions] = useState([]);  // Store positions received from SSE
+  const [position, setPosition] = useState([]);  
+  const [endSSE, setEndSSe]= useState(true);
+
+  const [maze, setMaze] = useState([]);
+  const [submitMaze, setSubmitMaze] = useState(false);
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,10 +29,13 @@ function App() {
     setTime(Number(timeValue));
     setEpisodes(Number(episodesValue));
     runPythonScript(timeValue, episodesValue);
+    setSubmitMaze(true);
+    
   };
 
   const runPythonScript = async (timeValue, episodesValue) => {
     setLoading(true);
+    setEndSSe(false);
     try {
       const response = await axios.post('http://localhost:8000/run_qlearn/', {
         time: timeValue,
@@ -35,6 +44,8 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
       });
       setResponseData(response.data);
+      setEndSSe(true);
+
     } catch (error) {
       handleError(error);
     } finally {
@@ -60,20 +71,42 @@ function App() {
     setRadioValue(event.target.value);
   };
 
+
+  const sendMaze = async (maze) => {
+    console.log('submitting maze -- sent from app');
+    try {
+      const response = await axios.post('http://localhost:8000/save_maze/', {
+        maze: maze,
+        }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+    } catch (error) {
+      handleError(error);
+    } 
+
+
+  } 
+
   // Start SSE listener
   useEffect(() => {
     const eventSource = new EventSource('http://localhost:8000/sse/');
     eventSource.onmessage = function(event) {
       const newPosition = JSON.parse(event.data);
-      setPositions((prevPositions) => [...prevPositions, newPosition]);
+      setPosition(newPosition);
       console.log('New position:', newPosition);
     };
     eventSource.onerror = function(error) {
       console.error("SSE Error:", error);
       eventSource.close();
     };
+
+    if (endSSE === true){
+      eventSource.close();
+    } 
+
     return () => eventSource.close();
-  }, []);
+  }, [endSSE]);
 
   return (
     <div className="main">
@@ -101,6 +134,16 @@ function App() {
               <input type="radio" value="block" name="radio" disabled={!isChecked} onChange={handleRadioChange} />
             </label>
           </div>
+          <div className='goal-radio'>
+          <label>Goal:
+              <input type="radio" value="goal" name="radio" disabled={!isChecked} onChange={handleRadioChange} />
+            </label>
+          </div>
+          <div className='start-radio'>
+            <label>Start:
+              <input type="radio" value="start" name="radio" disabled={!isChecked} onChange={handleRadioChange} />
+            </label>
+          </div>
         </form>
 
         {loading ? (
@@ -120,7 +163,7 @@ function App() {
       </div>
 
       <div className="maze-view">
-        <Maze isChecked={isChecked} radioValue={radioValue} positions={positions} />
+        <Maze isChecked={isChecked} radioValue={radioValue} position={position} sendMaze = {sendMaze} submitMaze={submitMaze} setSubmitMaze={setSubmitMaze}/>
       </div>
     </div>
   );
