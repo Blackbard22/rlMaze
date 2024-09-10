@@ -6,6 +6,7 @@ import Maze from './Maze/Maze';
 import './App.css';
 
 function App() {
+
   const [time, setTime] = useState(0);
   const [episodes, setEpisodes] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -14,10 +15,12 @@ function App() {
   const [isChecked, setIsChecked] = useState(false);
   const [radioValue, setRadioValue] = useState('');
   const [position, setPosition] = useState([]);  
+  const [positionArr, setPositionArr] = useState([]);
   const [endSSE, setEndSSe]= useState(true);
-
+  const [mazeRun, setMazeRun] = useState(false);  
   const [maze, setMaze] = useState([]);
   const [submitMaze, setSubmitMaze] = useState(false);
+  const [params, setParams] = useState({time: 4, episodes: 4});
 
 
 
@@ -30,6 +33,7 @@ function App() {
     setEpisodes(Number(episodesValue));
     runPythonScript(timeValue, episodesValue);
     setSubmitMaze(true);
+    setMazeRun(true);
     
   };
 
@@ -46,11 +50,13 @@ function App() {
       setResponseData(response.data);
       setEndSSe(true);
 
+
     } catch (error) {
       handleError(error);
     } finally {
       setLoading(false);
     }
+
   };
 
   const handleError = (error) => {
@@ -65,6 +71,7 @@ function App() {
 
   const handleCheckboxChange = () => {
     setIsChecked(!isChecked);
+    console.log('checkbox', isChecked);
   };
 
   const handleRadioChange = (event) => {
@@ -84,14 +91,14 @@ function App() {
     } catch (error) {
       handleError(error);
     } 
-
-
   } 
 
   // Start SSE listener
   useEffect(() => {
     const eventSource = new EventSource('http://localhost:8000/sse/');
     eventSource.onmessage = function(event) {
+      // const oldArr = [...positionArr];
+      // setPositionArr(oldArr.concat(JSON.parse(event.data)));
       const newPosition = JSON.parse(event.data);
       setPosition(newPosition);
       console.log('New position:', newPosition);
@@ -108,44 +115,50 @@ function App() {
     return () => eventSource.close();
   }, [endSSE]);
 
+
+  useEffect(() => { 
+   setParams({time: time, episodes: episodes});  
+  }, [episodes, time]);   
+
   return (
     <div className="main">
+          {!isChecked && (
+
       <div className="selection">
-        <form className="form" onSubmit={handleSubmit}>
-          <label htmlFor="time">Time:</label>
-          <input type="number" name="time" min="0" defaultValue="0" />
-          <label htmlFor="episodes">Episodes:</label>
-          <input type="number" name="episodes" min="0" defaultValue="4" />
-          <input type="submit" value="Submit" />
-        </form>
-
-        <form className="editMaze">
+        <div className="forms">
+            <form className="form" onSubmit={handleSubmit}>
+            <div className='time-input'>
+              <label htmlFor="time">Time:</label>
+              <input type="number" name="time" min="0" defaultValue="0" />
+            </div>
+            <div className='episode-input'>
+              <label htmlFor="episodes">Episodes:</label>
+              <input type="number" name="episodes" min="0" defaultValue="4" />
+            </div>
+            <div className='learning-input'>
+              <label htmlFor="episodes">Learning Rate:</label>
+              <input type="number" name="learn-rate" min="0" defaultValue="4" />
+            </div>
+            <div className="eps">
+            <div className='eps-input'>
+              <label htmlFor="episodes">Epsilon:</label>
+              <input type="number" name="eps" min="0" defaultValue="4" />
+            </div>
+            <div className='eps-decay-input'>
+              <label htmlFor="episodes">Epsilon-decay:</label>
+              <input type="number" name="eps-decay" min="0" defaultValue="4" />
+            </div>
+            </div>
+            <input type="submit" value="Submit" className='submit-btn' />
+          </form>
+          <form className="editMaze">
           <div className="edit-checkbox">
-            <label htmlFor="editSelect">Edit Maze</label>
-            <input type="checkbox" name="editSelect" onChange={handleCheckboxChange} />
+            <button type="button" name="editSelect" onClick={handleCheckboxChange}> Edit Maze </button>
           </div>
-          <div className="tile-radio">
-            <label htmlFor="radio">Block:
-              <input type="radio" value="tile" name="radio" disabled={!isChecked} onChange={handleRadioChange} />
-            </label>
-          </div>
-          <div className="block-radio">
-            <label>Tile:
-              <input type="radio" value="block" name="radio" disabled={!isChecked} onChange={handleRadioChange} />
-            </label>
-          </div>
-          <div className='goal-radio'>
-          <label>Goal:
-              <input type="radio" value="goal" name="radio" disabled={!isChecked} onChange={handleRadioChange} />
-            </label>
-          </div>
-          <div className='start-radio'>
-            <label>Start:
-              <input type="radio" value="start" name="radio" disabled={!isChecked} onChange={handleRadioChange} />
-            </label>
-          </div>
-        </form>
 
+        </form>
+        </div>
+        
         {loading ? (
           <div className="loading-screen">
             <p>Loading, please wait...</p>
@@ -161,9 +174,9 @@ function App() {
           </div>
         )}
       </div>
-
+    )}
       <div className="maze-view">
-        <Maze isChecked={isChecked} radioValue={radioValue} position={position} sendMaze = {sendMaze} submitMaze={submitMaze} setSubmitMaze={setSubmitMaze}/>
+        <Maze isChecked={isChecked} radioValue={radioValue} position={position} sendMaze = {sendMaze} submitMaze={submitMaze} setSubmitMaze={setSubmitMaze} handleRadioChange={handleRadioChange} handleCheckboxChange={handleCheckboxChange} endSSE = {endSSE} params={params} positionArr = {positionArr}/>
       </div>
     </div>
   );
