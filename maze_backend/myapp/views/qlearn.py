@@ -1,51 +1,115 @@
+
+from ..tasks import my_first_task
+from django.http import HttpResponse, JsonResponse
+import time
+from django.views.decorators.csrf import csrf_exempt
+
+
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from huey.contrib.djhuey import HUEY
+import sqlite3
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from ..tasks import long_running_task
+from ..models import TaskStatus
+import uuid
+
+@csrf_exempt
+def start_task(request):
+    task_id = str(uuid.uuid4())
+    task = long_running_task(task_id)
+    return JsonResponse({"task_id": task_id, "message": "Task started"})
+
+@csrf_exempt
+def cancel_task(request, task_id):
+    TaskStatus.objects.update_or_create(
+        task_id=task_id,
+        defaults={'status': 'cancelled'}
+    )
+    return JsonResponse({"status": "Task cancellation requested", "task_id": task_id})
+
+
+
+
+
 from django.http import StreamingHttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .models import Maze
+from ..models import Maze
 import json
 import time
 import numpy as np
 import random
 import os
+from huey.contrib.djhuey import task
+
+from django.core.cache import cache
+from django.views.decorators.cache import cache_page
+
 
 # Global variable for agent position (to be shared with SSE)
 agent_final_position = [0, 1]
 
 def get_position(position):
-    global agent_final_position
-    agent_final_position = [position[0], position[1]]
+    # global agent_final_position
+    # agent_final_position = [position[0], position[1]]
+    cache.set('agent_position', position, timeout=None)
 
 # SSE view for streaming the agent's position
+# @csrf_exempt
+# def sse_view(request):
+#     def event_stream():
+#         while True:
+#             # Stream the agent's final position as JSON
+#             agent_position = cache.get('agent_position', [0, 0])
+#             data = f"data: {json.dumps(agent_position)}\n\n"
+#             yield data
+#             time.sleep(0.5)  # Send updates every second
+
+#     return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+
+
+from django.http import StreamingHttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.core.cache import cache
+import json
+import time
+
 @csrf_exempt
 def sse_view(request):
     def event_stream():
+        last_position = None
+        consecutive_empty_count = 0
+        max_empty_attempts = 10  # Adjust as needed
+
         while True:
-            # Stream the agent's final position as JSON
-            data = f"data: {json.dumps(agent_final_position)}\n\n"
-            yield data
-            time.sleep(0.5)  # Send updates every second
+            agent_position = cache.get('agent_position')
 
-    return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+            if agent_position is not None:
+                if agent_position != last_position:
+                    data = f"data: {json.dumps(agent_position)}\n\n"
+                    yield data
+                    last_position = agent_position
+                consecutive_empty_count = 0
+            else:
+                consecutive_empty_count += 1
+                if consecutive_empty_count >= max_empty_attempts:
+                    yield "data: {}\n\n"  # Send empty data to keep connection alive
+                    consecutive_empty_count = 0
 
-# Main function for training and streaming
-@csrf_exempt
-def run_qlearn(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            time_value = data.get('time')
-            episodes = data.get('episodes')
+            # time.sleep(0.3)  # Adjust the interval as needed
 
-            # Start training and return JSON response when complete
-            result = run_qlearn_func(episodes, time_value)
-            return JsonResponse({'status': 'success', 'result': result})
-            
-        except json.JSONDecodeError:
-            return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-    else:
-        return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=400)
+    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
+
 
 # Q-learning training function with streaming positions
-def run_qlearn_func(episode_value, time_value):
+@task()
+def run_qlearn_func(episode_value, time_value, task_id, epsilon_value, epsilon_decay_value, learning_rate_value):
     import numpy as np
     import random
     import time
@@ -83,7 +147,7 @@ def run_qlearn_func(episode_value, time_value):
                     self.maze[state[0]][state[1]] != '#')
 
     class QLearningAgent:
-        def __init__(self, state_size, action_size, learning_rate=0.1, discount_factor=0.95, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.01):
+        def __init__(self, state_size, action_size, learning_rate=learning_rate_value, discount_factor=0.95, epsilon=episode_value, epsilon_decay=epsilon_decay_value, epsilon_min=0.01):
             self.state_size = state_size
             self.action_size = action_size
             self.q_table = np.zeros((state_size[0], state_size[1], action_size))
@@ -128,7 +192,7 @@ def run_qlearn_func(episode_value, time_value):
         get_position(agent_pos)
         # time.sleep(int(time_value))  # Add a small delay to make the visualization visible
 
-    def train_q_learning(maze, episodes=1000):
+    def train_q_learning(maze, episodes=500):
         env = MazeEnvironment(maze)
         state_size = (len(maze), len(maze[0]))
         action_size = 4  # up, right, down, left
@@ -141,6 +205,13 @@ def run_qlearn_func(episode_value, time_value):
             step = 0
 
             while not done:
+                try:
+                    task_status = TaskStatus.objects.get(task_id=task_id)
+                    if task_status.status == 'cancelled':
+                        print(f'Task {task_id} cancelled')
+                    return None
+                except TaskStatus.DoesNotExist:
+                    pass  
                 display_maze(maze, state, episode, step)
                 action = agent.get_action(state)
                 next_state, reward, done = env.step(action)
@@ -151,11 +222,11 @@ def run_qlearn_func(episode_value, time_value):
 
             agent.decay_epsilon()
 
-            if episode % 10 == 0:  # Reduced frequency of printing to avoid overwhelming output
+            if episode % 10 == 0:
                 print(f"Episode: {episode}, Total Reward: {total_reward}, Epsilon: {agent.epsilon:.2f}")
 
         return agent
-
+    
     def solve_maze(maze, agent):
         env = MazeEnvironment(maze)
         state = env.reset()
@@ -164,6 +235,14 @@ def run_qlearn_func(episode_value, time_value):
         step = 0
 
         while not done:
+            try:
+                task_status = TaskStatus.objects.get(task_id=task_id)
+                if task_status.status == 'cancelled':
+                    print(f'Task {task_id} cancelled during maze solving')
+                    return None
+            except TaskStatus.DoesNotExist:
+                pass 
+
             display_maze(maze, state, "Solution", step)
             action = np.argmax(agent.q_table[state])
             next_state, reward, done = env.step(action)
@@ -173,29 +252,19 @@ def run_qlearn_func(episode_value, time_value):
 
         return path
 
-    # maze = [
-    #     ['S', '.', '#', '#', '#'],
-    #     ['.', '.', '.', '.', '#'],
-    #     ['#', '#', '#', 'G', '#'],
-    #     ['#', '.', '.', '.', '#'],
-    #     ['#', '.', '#', '.', '.']
-    # ]
-
-    # print(f"og maze: {maze}")
-
-    # print(f"maze type: {type(maze)}")   
-
     maze_object = Maze.objects.first()
     maze = json.loads(maze_object.layout)
-    
+
     print(f"maze type: {type(maze)}")   
     time.sleep(3)
 
-
-
-
     trained_agent = train_q_learning(maze, episodes=int(episode_value))
+    if trained_agent is None:
+        return "Task cancelled during training"
+
     solution_path = solve_maze(maze, trained_agent)
+    if solution_path is None:
+        return "Task cancelled during maze solving"
 
     return solution_path
 
@@ -252,3 +321,47 @@ def fetch_maze():
     except Exception as e:
         print(f"Error fetching maze: {e}")
         return None
+
+
+
+# @csrf_exempt
+# def run_qlearn(request):
+#     if request.method == 'POST':
+#         try:
+#             data = json.loads(request.body)
+#             time_value = data.get('time', 0)
+#             episodes = data.get('episodes', 4)
+#             task_id = data.get('task_id')
+
+#             # Start training and return JSON response when complete
+#             result = run_qlearn_func(episodes, time_value, task_id)
+#             return JsonResponse({'status': 'success', 'task-id': task_id})
+            
+#         except json.JSONDecodeError:
+#             return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+#     else:
+#         return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=400)
+
+@csrf_exempt
+def run_qlearn(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            time_value = int(data.get('time', 0))
+            episodes = int(data.get('episodes', 4))
+            task_id = data.get('task_id')
+            # epsilon_value = int(data.get('epsilon', 1.0))
+            # epsilon_decay_value = int(data.get('epsilon_decay', 0.995))
+            # learning_rate_value = int(data.get('learning_rate', 0.1))
+            epsilon_value = 1
+            epsilon_decay_value = 0.995
+            learning_rate_value = 0.1
+
+
+            # Start training and return JSON response when complete
+            result = run_qlearn_func(episodes, time_value, task_id, epsilon_value, epsilon_decay_value, learning_rate_value)
+            return JsonResponse({'status': 'success', 'task-id': task_id})
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=400)

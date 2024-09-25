@@ -9,8 +9,10 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
 from pathlib import Path
+from huey import SqliteHuey
+from django.conf import settings
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,7 +34,9 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     'channels',
+    'channels_rabbitmq',
 
+    'huey.contrib.djhuey',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -45,6 +49,24 @@ INSTALLED_APPS = [
 ]
 
 ASGI_APPLICATION = 'maze_backend.asgi.application'
+
+
+
+from huey import SqliteHuey
+from django.conf import settings
+import os
+
+# Huey configuration
+HUEY = SqliteHuey(
+    'my_app',
+    filename=os.path.join(settings.BASE_DIR, 'huey.db')
+)
+
+
+# HUEY = SqliteHuey(
+#     filename=settings.BASE_DIR / 'huey.db',
+#     name='my-app'
+# )
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -145,11 +167,32 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # }
 
 
+# CHANNEL_LAYERS = {
+#     'default': {
+#         'BACKEND': 'channels_rabbitmq.core.RabbitmqChannelLayer',
+#         'CONFIG': {
+#             "host": [("localhost", 5672)],  # Ensure this matches your RabbitMQ server's host and port
+#         },
+#     },
+# }
+
+
 CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_rabbitmq.core.RabbitmqChannelLayer',
-        'CONFIG': {
-            "host": [("localhost", 5672)],  # Ensure this matches your RabbitMQ server's host and port
+    "default": {
+        "BACKEND": "channels_rabbitmq.core.RabbitMQChannelLayer",
+        "CONFIG": {
+            "host": "localhost",
+            "port": 5672,
+            "username": "guest",
+            "password": "guest",
+            "prefix": "demo-project",
         },
     },
+}
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'my_cache_table',
+    }
 }

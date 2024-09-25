@@ -1,14 +1,22 @@
 
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Maze from './Maze/Maze';
 import './App.css';
+import useEventSource from './useEventSource';  
+import { v4 as uuidv4 } from 'uuid';
+
+
+
 
 function App() {
 
   const [time, setTime] = useState(0);
   const [episodes, setEpisodes] = useState(0);
+  const [epsilon, setEpsilon] = useState(0);  
+  const [epsilon_decay, setEpsilonDecay] = useState(0); 
+  const [learning_rate, setLearningRate] = useState(0);
   const [loading, setLoading] = useState(false);
   const [responseData, setResponseData] = useState(null);
   const [error, setError] = useState(null);
@@ -16,21 +24,34 @@ function App() {
   const [radioValue, setRadioValue] = useState('');
   const [position, setPosition] = useState([]);  
   const [positionArr, setPositionArr] = useState([]);
-  const [endSSE, setEndSSe]= useState(true);
+  const [endSSE, setEndSSE]= useState(true);
   const [mazeRun, setMazeRun] = useState(false);  
   const [maze, setMaze] = useState([]);
   const [submitMaze, setSubmitMaze] = useState(false);
-  const [params, setParams] = useState({time: 4, episodes: 4});
+  const [params, setParams] = useState({time: 4, episodes: 4, epsilon: 1, epsilon_decay: 0.99, learning_rate: 0.1});
+  const [selectedAlgo, setSelectedAlgo] = useState('q-learn');  
+  const curr_task_id = useRef(null);  
 
 
+
+  useEventSource(selectedAlgo, endSSE, setPosition);
+  
+
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const timeValue = formData.get('time');
     const episodesValue = formData.get('episodes');
+    const epsilon = formData.get('eps');
+    const epsilon_decay = formData.get('eps-decay');
+    const learning_rate = formData.get('learn-rate');
     setTime(Number(timeValue));
     setEpisodes(Number(episodesValue));
+    setEpsilon(Number(epsilon));  
+    setEpsilonDecay(Number(epsilon_decay));
+    setLearningRate(Number(learning_rate)); 
     runPythonScript(timeValue, episodesValue);
     setSubmitMaze(true);
     setMazeRun(true);
@@ -39,16 +60,44 @@ function App() {
 
   const runPythonScript = async (timeValue, episodesValue) => {
     setLoading(true);
-    setEndSSe(false);
+    setEndSSE(false);
+    const response = null;
+    const task_id = uuidv4();
+    console.log('task_id:', task_id);
+    curr_task_id.current = task_id;
     try {
-      const response = await axios.post('http://localhost:8000/run_qlearn/', {
-        time: timeValue,
-        episodes: episodesValue,
-      }, {
-        headers: { 'Content-Type': 'application/json' },
-      });
-      setResponseData(response.data);
-      setEndSSe(true);
+      if(selectedAlgo === 'q-learn'){
+        console.log('runniing q-learn');
+        const response = await axios.post('http://localhost:8000/run_qlearn/', {
+          time: timeValue,
+          episodes: episodesValue,
+          task_id: task_id,
+          epsilon: epsilon,
+          epsilon_decay: epsilon_decay, 
+          learning_rate: learning_rate  
+        }, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        setResponseData(response.data);
+        // setEndSSe(true);
+  
+      } else if(selectedAlgo === 'sarsa'){
+        console.log('runniing sarsa');
+        const response = await axios.post('http://localhost:8000/sarsa/', {
+          time: timeValue,
+          episodes: episodesValue,
+          task_id: task_id,
+          epsilon: epsilon,
+          epsilon_decay: epsilon_decay, 
+          learning_rate: learning_rate  
+        }, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        setResponseData(response.data);
+        // setEndSSe(true);
+  
+      }
+     
 
 
     } catch (error) {
@@ -58,6 +107,9 @@ function App() {
     }
 
   };
+
+
+  
 
   const handleError = (error) => {
     if (error.response) {
@@ -93,32 +145,61 @@ function App() {
     } 
   } 
 
-  // Start SSE listener
+  const cancel_run = async () => {
+    try {
+      const response = await axios.post(`http://localhost:8000/cancel-task/${curr_task_id.current}/`);
+      console.log(response.data);
+      setIsTraining(false);
+      setEndSSE(true);
+    } catch (error) {
+      console.error('Error cancelling training:', error);
+    }
+  };
+
+
+  // const cancel_sarsa_run = async () => {
+  //   try {
+  //     const response = await axios.post('http://localhost:8000/cancel-sarsa-training/');
+  //     console.log(response.data);
+  //     setIsTraining(false);
+  //   } catch (error) {
+  //     console.error('Error cancelling training:', error);
+  //   }
+  // };
+
+
   useEffect(() => {
-    const eventSource = new EventSource('http://localhost:8000/sse/');
-    eventSource.onmessage = function(event) {
-      // const oldArr = [...positionArr];
-      // setPositionArr(oldArr.concat(JSON.parse(event.data)));
-      const newPosition = JSON.parse(event.data);
-      setPosition(newPosition);
-      console.log('New position:', newPosition);
+    const handleBeforeUnload = (event) => {
+      console.log(selectedAlgo);
+      cancel_run();
+      // Directly call the cancel functions based on the selectedAlgo value
+      // if (selectedAlgo === 'q-learn') {
+      //   cancel_qlearn_run();
+      // } else if (selectedAlgo === 'sarsa') {
+      //   cancel_sarsa_run();
+      // }
     };
-    eventSource.onerror = function(error) {
-      console.error("SSE Error:", error);
-      eventSource.close();
+  
+    window.addEventListener('beforeunload', handleBeforeUnload);
+  
+    // Cleanup the event listener when component unmounts
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
+  }, [selectedAlgo]); 
 
-    if (endSSE === true){
-      eventSource.close();
-    } 
 
-    return () => eventSource.close();
-  }, [endSSE]);
 
 
   useEffect(() => { 
-   setParams({time: time, episodes: episodes});  
+   setParams({time: time, episodes: episodes, epsilon: epsilon, epsilon_decay: epsilon_decay, learning_rate: learning_rate});  
   }, [episodes, time]);   
+
+  useEffect(() => {
+    // Your effect logic here
+    console.log('endSSE APP APP APP APP:', endSSE);
+    
+  }, [endSSE, setEndSSE]);
 
   return (
     <div className="main">
@@ -129,7 +210,7 @@ function App() {
             <form className="form" onSubmit={handleSubmit}>
             <div className='time-input'>
               <label htmlFor="time">Time:</label>
-              <input type="number" name="time" min="0" defaultValue="0" />
+              <input type="number" name="time" min="0" defaultValue="0"  step="0.01"/>
             </div>
             <div className='episode-input'>
               <label htmlFor="episodes">Episodes:</label>
@@ -137,16 +218,16 @@ function App() {
             </div>
             <div className='learning-input'>
               <label htmlFor="episodes">Learning Rate:</label>
-              <input type="number" name="learn-rate" min="0" defaultValue="4" />
+              <input type="number" name="learn-rate" min="0" defaultValue="0.1" step="0.02" />
             </div>
             <div className="eps">
             <div className='eps-input'>
               <label htmlFor="episodes">Epsilon:</label>
-              <input type="number" name="eps" min="0" defaultValue="4" />
+              <input type="number" name="eps" min="0" defaultValue="1" step="0.1"/>
             </div>
             <div className='eps-decay-input'>
               <label htmlFor="episodes">Epsilon-decay:</label>
-              <input type="number" name="eps-decay" min="0" defaultValue="4" />
+              <input type="number" name="eps-decay" min="0" defaultValue="0.99" step="0.01"/>
             </div>
             </div>
             <input type="submit" value="Submit" className='submit-btn' />
@@ -176,7 +257,7 @@ function App() {
       </div>
     )}
       <div className="maze-view">
-        <Maze isChecked={isChecked} radioValue={radioValue} position={position} sendMaze = {sendMaze} submitMaze={submitMaze} setSubmitMaze={setSubmitMaze} handleRadioChange={handleRadioChange} handleCheckboxChange={handleCheckboxChange} endSSE = {endSSE} params={params} positionArr = {positionArr}/>
+        <Maze isChecked={isChecked} radioValue={radioValue} position={position} sendMaze = {sendMaze} submitMaze={submitMaze} setSubmitMaze={setSubmitMaze} handleRadioChange={handleRadioChange} handleCheckboxChange={handleCheckboxChange} endSSE = {endSSE} setEndSSE={setEndSSE} params={params} positionArr = {positionArr} selectedAlgo={selectedAlgo} setSelectedAlgo={setSelectedAlgo} cancel_run={cancel_run}/>
       </div>
     </div>
   );

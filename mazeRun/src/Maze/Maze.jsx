@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import './Maze.css';
-const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitMaze,handleRadioChange, handleCheckboxChange, endSSE, params, positionArr}) => {
+const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitMaze,handleRadioChange, handleCheckboxChange, endSSE, setEndSSE, params, positionArr, selectedAlgo,setSelectedAlgo, cancel_run }) => {
 
     const [arr, setArr] = useState([
         ['S', '#', '#'],
@@ -14,11 +14,9 @@ const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitM
     const [currentStart, setCurrentStart] = useState([0, 0]); 
     const [arrPos, setArrPos] = useState([0, 0]);
     const [selectedAgent, setSelectedAgent] = useState('agent1');
-    const [selectedAlgo, setSelectedAlgo] = useState('q-learn');  
-      
+  
 
     const handle_agent_change = (event) => {  
-
         setSelectedAgent(event.target.value);
         console.log('selected agent', selectedAgent);
     }
@@ -26,6 +24,7 @@ const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitM
     const handle_algo_change = (event) => { 
       setSelectedAlgo(event.target.value);
       console.log('selected algo', selectedAlgo); 
+      
     }
 
 
@@ -140,8 +139,31 @@ const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitM
         }
       }
       
+    const handleDisplaySelection = () => {
+      const selectionMain = document.querySelector('.selection-main')
+      selectionMain.classList.remove('hide')
+      selectionMain.classList.toggle('show')
+      
+
+    } 
+
+    const handleDisplayLeave = () => {
+      const selectionMain = document.querySelector('.selection-main')
+      selectionMain.classList.remove('show')
+      selectionMain.classList.toggle('hide')
+      
+
+    } 
 
 
+    const handleRunCancel = () => { 
+
+      cancel_run();
+      setEndSSE(true);
+
+    };
+
+    
     
 
     useEffect(() => {
@@ -171,7 +193,7 @@ const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitM
       
       <div className="maze">
         {endSSE && (
-          <div className='selection-main'>
+          <div className='selection-main' onMouseEnter={handleDisplaySelection} onMouseLeave={handleDisplayLeave}>
           <h2>Edit Items</h2>
           <div className="cell-selection">
         <div className="terrain-selection">
@@ -230,6 +252,7 @@ const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitM
           </div>
 
         {!endSSE &&  (
+          <>
         <div className="pos-flow">
         <h4>Agent pos</h4>
         {arrPos.map((pos, i) => (
@@ -238,13 +261,14 @@ const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitM
           </div>
         ))}
       </div>
+      <button onClick={handleRunCancel}>Cancel Run</button>
+      </>
       )}
 
       </div>
 
       {!endSSE && (
         <div className="maze-params">
-          {console.log('params', params)}
           <div className="parms-time">
             {params.time}
           </div>

@@ -9,4 +9,11 @@ class Maze(models.Model):
 
     def __str__(self):
         return self.name
+    
+class TaskStatus(models.Model):
+    task_id = models.CharField(max_length=255, primary_key=True)
+    status = models.CharField(max_length=20)
+
+    def __str__(self):
+        return f"{self.task_id}: {self.status}"
 
