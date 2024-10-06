@@ -1,5 +1,4 @@
 
-
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Maze from './Maze/Maze';
@@ -157,27 +156,14 @@ function App() {
   };
 
 
-  // const cancel_sarsa_run = async () => {
-  //   try {
-  //     const response = await axios.post('http://localhost:8000/cancel-sarsa-training/');
-  //     console.log(response.data);
-  //     setIsTraining(false);
-  //   } catch (error) {
-  //     console.error('Error cancelling training:', error);
-  //   }
-  // };
+  
 
 
   useEffect(() => {
     const handleBeforeUnload = (event) => {
       console.log(selectedAlgo);
       cancel_run();
-      // Directly call the cancel functions based on the selectedAlgo value
-      // if (selectedAlgo === 'q-learn') {
-      //   cancel_qlearn_run();
-      // } else if (selectedAlgo === 'sarsa') {
-      //   cancel_sarsa_run();
-      // }
+     
     };
   
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -229,8 +215,10 @@ function App() {
               <label htmlFor="episodes">Epsilon-decay:</label>
               <input type="number" name="eps-decay" min="0" defaultValue="0.99" step="0.01"/>
             </div>
-            </div>
+          </div>
+          <div className='submit-container'>
             <input type="submit" value="Submit" className='submit-btn' />
+          </div>
           </form>
           <form className="editMaze">
           <div className="edit-checkbox">
@@ -258,6 +246,14 @@ function App() {
     )}
       <div className="maze-view">
         <Maze isChecked={isChecked} radioValue={radioValue} position={position} sendMaze = {sendMaze} submitMaze={submitMaze} setSubmitMaze={setSubmitMaze} handleRadioChange={handleRadioChange} handleCheckboxChange={handleCheckboxChange} endSSE = {endSSE} setEndSSE={setEndSSE} params={params} positionArr = {positionArr} selectedAlgo={selectedAlgo} setSelectedAlgo={setSelectedAlgo} cancel_run={cancel_run}/>
+      </div>
+      <div className="footer">
+        <ul>
+          <li>background</li>
+          <li>about</li>
+    
+        </ul>
+
       </div>
     </div>
   );

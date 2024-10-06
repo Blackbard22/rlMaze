@@ -53,22 +53,10 @@ from django.views.decorators.cache import cache_page
 agent_final_position = [0, 1]
 
 def get_position(position):
-    # global agent_final_position
-    # agent_final_position = [position[0], position[1]]
+
     cache.set('agent_position', position, timeout=None)
 
-# SSE view for streaming the agent's position
-# @csrf_exempt
-# def sse_view(request):
-#     def event_stream():
-#         while True:
-#             # Stream the agent's final position as JSON
-#             agent_position = cache.get('agent_position', [0, 0])
-#             data = f"data: {json.dumps(agent_position)}\n\n"
-#             yield data
-#             time.sleep(0.5)  # Send updates every second
 
-#     return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
 
 
 from django.http import StreamingHttpResponse
@@ -174,6 +162,8 @@ def run_qlearn_func(episode_value, time_value, task_id, epsilon_value, epsilon_d
         def decay_epsilon(self):
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
+    
+
     def clear_console():
         os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -227,7 +217,8 @@ def run_qlearn_func(episode_value, time_value, task_id, epsilon_value, epsilon_d
 
         return agent
     
-    def solve_maze(maze, agent):
+    
+    def solve_maze(maze, agent, max_steps=1000):
         env = MazeEnvironment(maze)
         state = env.reset()
         done = False
@@ -244,13 +235,41 @@ def run_qlearn_func(episode_value, time_value, task_id, epsilon_value, epsilon_d
                 pass 
 
             display_maze(maze, state, "Solution", step)
-            action = np.argmax(agent.q_table[state])
+            action = np.argmax(agent.q_table[state[0], state[1]])
             next_state, reward, done = env.step(action)
             path.append(next_state)
             state = next_state
             step += 1
 
         return path
+    # def solve_maze(maze, agent, max_steps=1000):
+    #     env = MazeEnvironment(maze)
+    #     state = env.reset()
+    #     done = False
+    #     path = [state]
+    #     step = 0
+
+    #     while not done and step < max_steps:
+    #         try:
+    #             task_status = TaskStatus.objects.get(task_id=task_id)
+    #             if task_status.status == 'cancelled':
+    #                 print(f'Task {task_id} cancelled during maze solving')
+    #                 return None
+    #         except TaskStatus.DoesNotExist:
+    #             pass 
+
+    #         display_maze(maze, state, "Solution", step)
+    #         action = np.argmax(agent.q_table[state[0], state[1]])
+    #         next_state, done = env.step(action)
+    #         path.append(next_state)
+    #         state = next_state
+    #         step += 1
+
+    #     if not done:
+    #         print("Failed to solve the maze within the maximum number of steps.")
+    #         return None
+
+    #     return path
 
     maze_object = Maze.objects.first()
     maze = json.loads(maze_object.layout)
@@ -324,23 +343,7 @@ def fetch_maze():
 
 
 
-# @csrf_exempt
-# def run_qlearn(request):
-#     if request.method == 'POST':
-#         try:
-#             data = json.loads(request.body)
-#             time_value = data.get('time', 0)
-#             episodes = data.get('episodes', 4)
-#             task_id = data.get('task_id')
 
-#             # Start training and return JSON response when complete
-#             result = run_qlearn_func(episodes, time_value, task_id)
-#             return JsonResponse({'status': 'success', 'task-id': task_id})
-            
-#         except json.JSONDecodeError:
-#             return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-#     else:
-#         return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=400)
 
 @csrf_exempt
 def run_qlearn(request):
@@ -348,7 +351,9 @@ def run_qlearn(request):
         try:
             data = json.loads(request.body)
             time_value = int(data.get('time', 0))
-            episodes = int(data.get('episodes', 4))
+            # episodes = int(data.get('episodes', 6))
+            episodes = 8
+
             task_id = data.get('task_id')
             # epsilon_value = int(data.get('epsilon', 1.0))
             # epsilon_decay_value = int(data.get('epsilon_decay', 0.995))

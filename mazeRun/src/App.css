@@ -12,15 +12,16 @@
   width: 100%;
   position: relative;
   overflow-y: hidden;
+  background-color: black;
   
 }
 
 .selection{
 
   position: absolute;
-  top: 75%;
+  top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -30%);
   z-index: 1;
   height: 600px;
   width: 800px;
@@ -82,14 +83,24 @@
   flex-basis: 100%;
 }
 
+.submit-container{
 
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  width: 100%;
+}
 
 .submit-btn{
 
   padding: 3px 7px;
- 
+  align-items: center;
+  box-shadow: 2px 1px 0px 0px rgba(255,255,255, 0.8);
+  
 
 }
+
+
 
 
 .editMaze{
@@ -98,6 +109,11 @@
   flex-direction: column;
   align-items: start;
   gap: 1rem;
+}
+
+.edit-checkbox button{
+  padding: 10px;
+  box-shadow: 2px 1px 0px 0px rgba(255,255,255, 0.5);
 }
 
 
@@ -110,3 +126,42 @@
 }
 
 
+
+
+input[type=number]::-webkit-inner-spin-button {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+
+input[type=number] {
+height: 45px;
+}
+
+.footer{
+
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+
+}
+
+.footer ul{
+  display: flex;
+  gap: 30px;
+  list-style: none;
+  border-top: 1px solid rgb(0,0,137);
+  padding: 10px 20px;
+}
+
+.footer li:hover{
+  cursor: pointer;
+  text-shadow:   
+  -1px -1px 0 blue,  
+  4px -1px 0 blue,
+ -1px  1px 0 blue,
+  1px  1px 0 blue;;
+}

@@ -1,13 +1,14 @@
 import React, {useState, useEffect} from 'react';
 import './Maze.css';
+
 const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitMaze,handleRadioChange, handleCheckboxChange, endSSE, setEndSSE, params, positionArr, selectedAlgo,setSelectedAlgo, cancel_run }) => {
 
     const [arr, setArr] = useState([
-        ['S', '#', '#'],
-        ['.', '.', '#'],
-        ['#', '.', '.'],
-        ['#', '#', '.'],
-        ['#', '#', 'G'],
+      ['S', '#', '.', '#', '#', '#'],
+      ['.', '.', '#', '.', '#', '.'],
+      ['#', '.', '.', '.', '.', '.'],
+      ['#', '.', '.', '#', '#', '.'],
+      ['#', '#', '.', '#', '#', 'G'],
       ]);
 
     const [currentGoal, setCurrentGoal] = useState([4, 2]);
@@ -172,8 +173,7 @@ const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitM
             sendMaze(arr);
             setSubmitMaze(false);
         }
-        
-    
+      
 
     }, [submitMaze]);
 
@@ -182,9 +182,77 @@ const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitM
       setArrPos([...arrPos, position]);
     } , [position]);  
 
+
+    const handleAgent = (value) =>{
+      const selectionMain = document.querySelector('.agent-select-btn')
+      const mainSelect = document.querySelector('.agent-btn-container') 
+      selectionMain.classList.toggle('hide')
+      mainSelect.classList.toggle('hide') 
+      setSelectedAgent(value);
+      console.log('selected agent', selectedAgent);
+    }
+
+    
+
+    const handleAlgoSelection = () => {
+      let selectItems = document.querySelector('.select-items');
+      
+      if (selectItems.style.display === 'block') {
+        selectItems.style.display = 'none';
+      } else {
+        selectItems.style.display = 'block';
+      }
+    };
+    
+    const handleOptionSelection = (option,value) => {
+      let selectSelected = document.querySelector('.select-selected');
+      let selectItems = document.querySelector('.select-items');
+      setSelectedAlgo(value);
+      console.log('selected Algo', selectedAgent);
+      selectSelected.textContent = option;
+      selectItems.style.display = 'none';
+    
+      
+    };
+
+    // useEffect(() => {
+    //   // Your effect logic here
+    //   window.addEventListener('click', function handleOutsideClick(e) {
+    //     if (!selectItems.contains(e.target) && !selectSelected.contains(e.target)) {
+    //       selectItems.style.display = 'none';
+    //       window.removeEventListener('click', handleOutsideClick);
+    //     }
+    //   });
+
+    //   return () => {
+        
+    //   };
+    // }, []);
+
+
+    useEffect(() => {
+      
+
+      const handleOutsideClick = (e) => {
+        if (!selectItems.contains(e.target) && !selectSelected.contains(e.target)) {
+          selectItems.style.display = 'none';
+          window.removeEventListener('click', handleOutsideClick);
+        }
+      };
+  
+      document.addEventListener('mousedown', handleOutsideClick);
+  
+      return () => {
+        document.removeEventListener('mousedown', handleOutsideClick);
+      };
+    }, []);
+    
+
+
+
     return (
 
-      <div className="maze-main">
+    <div className="maze-main">
       {!endSSE && (
         <div className="maze-timer">
         30 seconds to complete the maze
@@ -197,16 +265,16 @@ const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitM
           <h2>Edit Items</h2>
           <div className="cell-selection">
         <div className="terrain-selection">
-          <div className="tile-radio">
+          <div className="tile-button">
               <button value="block" name='radio' disabled={!isChecked} onClick={handleRadioChange}>Block</button>
             </div>
-            <div className="block-radio">
+            <div className="block-button">
               <button value="tile" name='radio' disabled={!isChecked} onClick={handleRadioChange}>Tile</button>
             </div>
-            <div className='goal-radio'>
+            <div className='goal-button'>
               <button value="goal" name='radio' disabled={!isChecked} onClick={handleRadioChange}>Goal</button>
             </div>
-            <div className='start-radio'>
+            <div className='start-button'>
               <button value="start" name='radio' disabled={!isChecked} onClick={handleRadioChange}>Start</button>
             </div>
             <button onClick={handleCheckboxChange}>Set Params</button>
@@ -219,29 +287,33 @@ const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitM
                 <button name='alteration' value="column" onClick={handleMazeAddition}>Column +</button>
             </div>
           </div>
-          <div className="dropdown-container">
-            <label htmlFor="maze-options">Agent Select:</label>
-            <select id="maze-options" name="maze-options" onChange={handle_agent_change}>
-              <option value="agent1" className='agent1'>Quake</option>
-              <option value="agent2" className='agent2'>Nubulis</option>
-            </select>
+         
+
+          <div className='agent-select'>
+            <button className='agent-select-btn' onClick={()=>handleAgent('')}>{selectedAgent}</button>
+            <div className='agent-btn-container hide'>
+              <img className='agent1' value="agent1" onClick={()=>handleAgent('agent1')} src='../../public/agent1-cut.svg' />
+              <img className='agent2' value="agent2" onClick={()=>handleAgent('agent2')} src='../../public/agent2_cut.svg' />
+            </div>
           </div>
 
-          <div className="algo-selection">
-          <label htmlFor="algo-options">Algo Select:</label>
-            <select id="algo-options" name="algo-options" onChange={handle_algo_change}>
-              <option value="q-learn" className='q-learn'>q-learn</option>
-              <option value="sarsa" className='sarsa'>sarsa</option>
-            </select>
+        <div className="algo-selection">
+          <div class="select-selected" onClick={handleAlgoSelection}>
+            q-learn
+          </div>
+          <div class="select-items">
+              <div className='algo-option' value='q-learn' onClick={() => handleOptionSelection('q-learn','q-learn')}>q-learn</div>
+              <div className='algo-option' value='sarsa' onClick={() => handleOptionSelection('SARSA','sarsa')}>SARSA</div>
+          </div>
           </div>
         </div>
           </div>
         )
-
         }
-          <div className='layout'>
+  
+        <div className='layout'>
                     {arr.map((row, i) => (
-                        <div key={i} className='row'>
+                        <div key={i} className='row' style={{gridTemplateColumns: `repeat(${arr[0].length}, minmax(10px, 50px))`}}>
                             {row.map((cell, j) => (
                                 <div key={j} className='cell'>
                                 {getCellType(cell,i,j)}
@@ -250,35 +322,59 @@ const Maze = ({isChecked, radioValue, position, sendMaze, submitMaze, setSubmitM
                         </div>
                 ))}
           </div>
-
+      
+    <div className="run-info">  
         {!endSSE &&  (
           <>
         <div className="pos-flow">
         <h4>Agent pos</h4>
-        {arrPos.map((pos, i) => (
-          <div key={i} className='pos'>
-            {pos}
-          </div>
-        ))}
+        {arrPos.slice().reverse().map((pos, i) => (
+        <div key={i} className='pos'>
+          {`${[pos[0], pos[1]]}`}
+         </div>
+            ))}
+
       </div>
-      <button onClick={handleRunCancel}>Cancel Run</button>
+      <button onClick={handleRunCancel} className='cancel-btn'>Cancel Run</button>
       </>
       )}
+    </div>
 
       </div>
 
       {!endSSE && (
         <div className="maze-params">
-          <div className="parms-time">
-            {params.time}
+          <div className="params-time">
+            <div>Time:</div>
+          <div>
+          {params.time}
           </div>
-          <div className="parms-episode">
+          </div>
+          <div className="params-episode">
+            <div>Episode:</div>
+            <div>
             {params.episodes}
+            </div>
           </div>
         </div>
       )}
 
-      </div>
+
+
+  { endSSE &&(
+    <div className="edit-display">
+        EDIT
+    </div>
+
+  )
+
+
+  }    
+
+
+  </div>
+
+
 
       
     );

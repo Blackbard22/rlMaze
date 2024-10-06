@@ -143,7 +143,7 @@ def train_sarsa(maze, episodes=4, epsilon=1.0, epsilon_decay=0.995, learning_rat
             state = next_state
             action = next_action
             update_agent_position(state)
-            time.sleep(0.3)
+            # time.sleep(0.3)
             step += 1
 
         agent.decay_epsilon()
