@@ -18,8 +18,7 @@ from django.contrib import admin
 from django.urls import path
 from myapp.views import run_qlearn
 from myapp.views import sse_view, save_maze, get_maze, sarsaSSE, run_sarsa, cancel_task, start_task
-# from myapp.views import  sarsaSSE, run_sarsa
-# cancel_training, cancel_sarsa_training
+
 
 
 
@@ -32,13 +31,8 @@ urlpatterns = [
     path('get_maze/<int:maze_id>/', get_maze, name='get_maze'),
     path('sarsa/', run_sarsa, name='sarsa'),
     path('sarsa_sse/', sarsaSSE, name='sarsa_sse'),
-    # path('restart-server/', restart_server, name='restart_server'),
-    # path('some/', some_view, name='some'),
     path('start-task/', start_task, name='start_task'),
     path('cancel-task/<str:task_id>/', cancel_task, name='cancel_task'),
     
-    # path('cancel-training/', cancel_training, name='cancel_training'),
-    # path('cancel-sarsa-training/', cancel_sarsa_training, name='cancel_sarsa_training'),
-
 ]
 

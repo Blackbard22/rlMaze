@@ -1,0 +1,55 @@
+@keyframes slideIn {
+    from {
+        transform: translate(-50%, 10%) scale(0.3);
+        opacity: 0;
+
+    }
+
+    to {
+        transform: translate(-50%, 10%) scale(1);
+        opacity: 1;
+
+
+    }
+}
+
+
+.modal_overlay {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, 10%);
+    font-size: 1rem;
+    width: fit-content;
+    height: fit-content;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    color: black;
+}
+
+
+.modal_overlay.hide {
+    display: none;
+}
+
+.modal_overlay.animate {
+
+    animation: slideIn 350ms;
+}
+
+.modal_content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+}
+
+.close_btn {
+    font-weight: 600;
+    text-shadow: 2px 1px 1px red;
+    cursor: pointer;
+}

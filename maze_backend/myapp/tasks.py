@@ -6,7 +6,7 @@ import time
 
 @task()
 def my_first_task(param):
-    print(f"Task running with param: {param}")  # Uncomment this line
+    print(f"Task running with param: {param}") 
     print("Task running")
     time.sleep(1)
     return "Task completed"
@@ -35,8 +35,8 @@ def long_running_task(task_id):
                 print(f'Task {task_id} cancelled')
                 return
         except TaskStatus.DoesNotExist:
-            pass  # Task not cancelled, continue execution
-
+            pass  # Task not cancelled
+        
         # Simulate work
         print(f'Task {task_id} running step {i}')
         time.sleep(1)
